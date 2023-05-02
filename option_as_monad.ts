@@ -1,14 +1,16 @@
 let none: Option<any>;
 
 export class Option<TValue> {
+
     constructor(private readonly value?: TValue) {}
+
     public static Some<T>(value: T) {
-        return new Option<T>(value);
+        return Object.freeze(new Option<T>(value));
     }
 
     public static None<TValue>() {
         if (!none) {
-            none = new Option();
+            none = Object.freeze(new Option());
         }
         return none as Option<TValue>;
     }
