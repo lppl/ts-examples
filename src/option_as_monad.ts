@@ -1,6 +1,6 @@
 let none: Option<any>;
 
-export class Option<TValue> {
+class Option<TValue> {
 
     constructor(private readonly value?: TValue) {}
 
@@ -49,4 +49,8 @@ console.assert('Hello Foobar' === one.map(str => `Hello ${str}`).or('Defaults'))
 console.assert('Hello Foobar' === one.map(str => `Hello ${str}`).or_fn(() => 'Defaults'));
 console.assert('Defaults' === two.map(str => `Hello ${str}`).or('Defaults'));
 console.assert('Defaults' === two.map(str => `Hello ${str}`).or_fn(() => 'Defaults'));
+console.assert('Defaults' === two.map(str => `Hello ${str}`).or_fn(() => 'Defaults'));
 
+export {
+    Option
+}
