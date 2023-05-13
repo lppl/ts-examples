@@ -14,6 +14,7 @@ type Option<TValue> = Readonly<{
         noneFn: () => TExpected,
     ): TExpected;
     value(_default: TValue): TValue;
+    unwrap(): TValue;
 }>;
 
 class OptionSome<TValue> implements Option<TValue> {
@@ -49,6 +50,10 @@ class OptionSome<TValue> implements Option<TValue> {
     value(_default: TValue): TValue {
         return this.#value;
     }
+
+    unwrap(): TValue {
+        return this.#value;
+    }
 }
 
 class OptionNone<TValue> implements Option<TValue> {
@@ -73,6 +78,10 @@ class OptionNone<TValue> implements Option<TValue> {
 
     value(_default: TValue): TValue {
         return _default;
+    }
+
+    unwrap(): TValue {
+        throw Error("Tried to unwrap empty Option");
     }
 }
 
