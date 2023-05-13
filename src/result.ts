@@ -1,8 +1,8 @@
-import { None, Option, Some } from "./option";
+import { None, TOption, Some } from "./option";
 
 type InnerResult<TValue> = Readonly<{
-    ok(): Option<TValue>;
-    err(): Option<Error>;
+    ok(): TOption<TValue>;
+    err(): TOption<Error>;
     and<TTarget>(fn: (v: TValue) => TTarget): Result<TTarget>;
     match<TTarget>(
         someFn: (value: TValue) => TTarget,
@@ -22,11 +22,11 @@ class ResultOk<TValue> implements InnerResult<TValue> {
         this.#value = value;
     }
 
-    ok(): Option<TValue> {
+    ok(): TOption<TValue> {
         return Some(this.#value);
     }
 
-    err(): Option<Error> {
+    err(): TOption<Error> {
         return None();
     }
 
@@ -50,11 +50,11 @@ class ResultErr<TValue> implements InnerResult<TValue> {
         this.#error = error;
     }
 
-    ok(): Option<TValue> {
+    ok(): TOption<TValue> {
         return None();
     }
 
-    err(): Option<Error> {
+    err(): TOption<Error> {
         return Some(this.#error);
     }
 
@@ -85,4 +85,4 @@ function Err<TValue>(error: Error): Result<TValue> {
     return Object.freeze(new ResultErr<TValue>(error)) as Result<TValue>;
 }
 
-export { InnerResult, Ok, Err };
+export { Result, Ok, Err };
