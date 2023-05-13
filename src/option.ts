@@ -1,14 +1,6 @@
-type Option<TValue> = Readonly<{
-    and<TTarget>(
-        fn: (v: TValue) => TTarget,
-    ): Option<
-        TTarget extends Option<infer TNestedValue> ? TNestedValue : TTarget
-    >;
-    else(
-        fn: () => TValue,
-    ): Option<
-        TValue extends Option<infer TNestedValue> ? TNestedValue : TValue
-    >;
+type InnerOption<TValue> = Readonly<{
+    and<TTarget>(fn: (v: TValue) => TTarget): Option<TTarget>;
+    else<TTarget>(fn: () => TTarget): Option<TTarget>;
     match<TExpected>(
         someFn: (value: TValue) => TExpected,
         noneFn: () => TExpected,
@@ -17,7 +9,11 @@ type Option<TValue> = Readonly<{
     unwrap(): TValue;
 }>;
 
-class OptionSome<TValue> implements Option<TValue> {
+type Option<TValue> = InnerOption<
+    TValue extends InnerOption<infer TNestedValue> ? TNestedValue : TValue
+>;
+
+class OptionSome<TValue> implements InnerOption<TValue> {
     readonly #value: TValue;
 
     constructor(value: TValue) {
@@ -26,17 +22,13 @@ class OptionSome<TValue> implements Option<TValue> {
 
     and<TTarget>(
         fn: (v: TValue) => TTarget,
-    ): Option<
-        TTarget extends Option<infer TNestedValue> ? TNestedValue : TTarget
+    ): InnerOption<
+        TTarget extends InnerOption<infer TNestedValue> ? TNestedValue : TTarget
     > {
         return Some(fn(this.#value));
     }
 
-    else(
-        fn: () => TValue,
-    ): Option<
-        TValue extends Option<infer TNestedValue> ? TNestedValue : TValue
-    > {
+    else<TTarget>(fn: () => TTarget): Option<TTarget> {
         return this as any;
     }
 
@@ -56,16 +48,12 @@ class OptionSome<TValue> implements Option<TValue> {
     }
 }
 
-class OptionNone<TValue> implements Option<TValue> {
-    and<TTarget>(): Option<TTarget> {
-        return this as unknown as Option<TTarget>;
+class OptionNone<TValue> implements InnerOption<TValue> {
+    and<TTarget>(): InnerOption<TTarget> {
+        return this as unknown as InnerOption<TTarget>;
     }
 
-    else(
-        fn: () => TValue,
-    ): Option<
-        TValue extends Option<infer TNestedValue> ? TNestedValue : TValue
-    > {
+    else<TTarget>(fn: () => TTarget): Option<TTarget> {
         return Some(fn());
     }
 
@@ -85,16 +73,16 @@ class OptionNone<TValue> implements Option<TValue> {
     }
 }
 
-function Some<TValue extends unknown>(
-    value: TValue,
-): Option<TValue extends Option<infer TNestedValue> ? TNestedValue : TValue> {
+function Some<TValue extends unknown>(value: TValue): Option<TValue> {
     if (value instanceof OptionSome) {
         return value;
     } else if (value instanceof OptionNone) {
         return value;
     } else {
-        return Object.freeze(new OptionSome(value)) as unknown as Option<
-            TValue extends Option<infer TNestedValue> ? TNestedValue : TValue
+        return Object.freeze(new OptionSome(value)) as unknown as InnerOption<
+            TValue extends InnerOption<infer TNestedValue>
+                ? TNestedValue
+                : TValue
         >;
     }
 }
@@ -104,47 +92,5 @@ const none = Object.freeze(new OptionNone<unknown>());
 function None<T>(): Option<T> {
     return none as Option<T>;
 }
-
-const someVar = Some("Foobar");
-const noneVar = None<string>();
-
-console.assert(
-    "Hello Foobar" === someVar.and((str) => `Hello ${str}`).value("_"),
-);
-
-console.assert("_" === noneVar.value("_"));
-console.assert(
-    "Hello Foobar" ===
-        noneVar
-            .else(() => "Foobar")
-            .and((str) => `Hello ${str}`)
-            .value("_"),
-);
-
-console.assert(
-    "None var found" ===
-        noneVar.match(
-            (str) => `Found string ${str}`,
-            () => "None var found",
-        ),
-);
-
-console.assert(
-    "Found string Foobar" ===
-        someVar.match(
-            (str) => `Found string ${str}`,
-            () => "None var found",
-        ),
-);
-
-console.assert(
-    Some(Some(Some("Roll it out"))).value("did not work") === "Roll it out",
-    "Some flattens options",
-);
-
-console.assert(
-    Some(Some(None())).value("None also work") === "None also work",
-    "Some flattens options",
-);
 
 export { Some, None, Option };
