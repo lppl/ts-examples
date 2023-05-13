@@ -1,12 +1,12 @@
-type Option<TValue> = {
+type Option<TValue> = Readonly<{
     and<TTarget>(fn: (v: TValue) => TTarget): Option<TTarget>;
     else(fn: () => TValue): Option<TValue>;
-    map<TExpected>(
+    match<TExpected>(
         someFn: (value: TValue) => TExpected,
         noneFn: () => TExpected,
     ): TExpected;
     value(_default: TValue): TValue;
-};
+}>;
 
 class OptionSome<TValue> implements Option<TValue> {
     readonly #value: TValue;
@@ -16,14 +16,14 @@ class OptionSome<TValue> implements Option<TValue> {
     }
 
     and<TTarget>(fn: (v: TValue) => TTarget): Option<TTarget> {
-        return new OptionSome(fn(this.#value));
+        return Some(fn(this.#value));
     }
 
     else(fn: () => TValue): Option<TValue> {
         return this;
     }
 
-    map<TExpected>(
+    match<TExpected>(
         someFn: (value: TValue) => TExpected,
         noneFn: () => TExpected,
     ) {
@@ -41,10 +41,10 @@ class OptionNone<TValue> implements Option<TValue> {
     }
 
     else(fn: () => TValue): Option<TValue> {
-        return new OptionSome(fn());
+        return Some(fn());
     }
 
-    map<TExpected>(
+    match<TExpected>(
         someFn: (value: TValue) => TExpected,
         noneFn: () => TExpected,
     ) {
@@ -57,10 +57,10 @@ class OptionNone<TValue> implements Option<TValue> {
 }
 
 function Some<T>(value: T): Option<T> {
-    return new OptionSome(value);
+    return Object.freeze(new OptionSome(value));
 }
 
-const none = new OptionNone<unknown>();
+const none = Object.freeze(new OptionNone<unknown>());
 
 function None<T>(): Option<T> {
     return none as Option<T>;
@@ -84,7 +84,7 @@ console.assert(
 
 console.assert(
     "None var found" ===
-        noneVar.map(
+        noneVar.match(
             (str) => `Found string ${str}`,
             () => "None var found",
         ),
@@ -92,10 +92,10 @@ console.assert(
 
 console.assert(
     "Found string Foobar" ===
-        someVar.map(
+        someVar.match(
             (str) => `Found string ${str}`,
             () => "None var found",
         ),
 );
 
-export { Option };
+export { Some, None, Option };
