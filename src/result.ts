@@ -1,16 +1,23 @@
-import { Option, Some, None } from "./option";
+import { None, Option, Some } from "./option";
 
-type Result<TValue, TError = Error> = Readonly<{
+type InnerResult<TValue> = Readonly<{
     ok(): Option<TValue>;
-    err(): Option<TError>;
-    match<TExpected>(
-        someFn: (value: TValue) => TExpected,
-        noneFn: (err: TError) => TExpected,
-    ): TExpected;
+    err(): Option<Error>;
+    and<TTarget>(fn: (v: TValue) => TTarget): Result<TTarget>;
+    match<TTarget>(
+        someFn: (value: TValue) => TTarget,
+        noneFn: (err: Error) => TTarget,
+    ): TTarget;
+    unwrap(): TValue;
 }>;
 
-class ResultOk<TValue, TError> implements Result<TValue, TError> {
+type Result<TValue> = InnerResult<
+    TValue extends InnerResult<infer TNestedValue> ? TNestedValue : TValue
+>;
+
+class ResultOk<TValue> implements InnerResult<TValue> {
     readonly #value: TValue;
+
     constructor(value: TValue) {
         this.#value = value;
     }
@@ -19,18 +26,27 @@ class ResultOk<TValue, TError> implements Result<TValue, TError> {
         return Some(this.#value);
     }
 
-    err(): Option<TError> {
+    err(): Option<Error> {
         return None();
     }
 
-    match<TExpected>(okFn: (value: TValue) => TExpected): TExpected {
+    and<TTarget>(fn: (value: TValue) => TTarget): Result<TTarget> {
+        return Ok(fn(this.#value));
+    }
+
+    match<TTarget>(okFn: (value: TValue) => TTarget): TTarget {
         return okFn(this.#value);
+    }
+
+    unwrap(): TValue {
+        return this.#value;
     }
 }
 
-class ResultErr<TValue, TError> implements Result<TValue, TError> {
-    readonly #error: TError;
-    constructor(error: TError) {
+class ResultErr<TValue> implements InnerResult<TValue> {
+    readonly #error: Error;
+
+    constructor(error: Error) {
         this.#error = error;
     }
 
@@ -38,26 +54,35 @@ class ResultErr<TValue, TError> implements Result<TValue, TError> {
         return None();
     }
 
-    err(): Option<TError> {
+    err(): Option<Error> {
         return Some(this.#error);
     }
 
-    match<TExpected>(_: any, errFn: (error: TError) => TExpected): TExpected {
+    and<TTarget>(_fn: (value: TValue) => TTarget): Result<TTarget> {
+        return this as Result<TTarget>;
+    }
+
+    match<TTarget>(_: any, errFn: (error: Error) => TTarget): TTarget {
         return errFn(this.#error);
+    }
+
+    unwrap(): TValue {
+        throw Error("Tried to unwrap of Err Result", { cause: this.#error });
     }
 }
 
-function Ok<TValue, TError>(value: TValue): Result<TValue, TError> {
-    return Object.freeze(new ResultOk<TValue, TError>(value));
+function Ok<TValue>(value: TValue): Result<TValue> {
+    if (value instanceof ResultOk) {
+        return value;
+    } else if (value instanceof ResultErr) {
+        return value;
+    } else {
+        return Object.freeze(new ResultOk<TValue>(value)) as Result<TValue>;
+    }
 }
 
-function Err<TValue, TError = Error>(error: TError): Result<TValue, TError> {
-    return Object.freeze(new ResultErr<TValue, TError>(error));
+function Err<TValue>(error: Error): Result<TValue> {
+    return Object.freeze(new ResultErr<TValue>(error)) as Result<TValue>;
 }
 
-export { Result, Ok, Err };
-
-test("Result.match", function () {
-    const res: Result<string, Error> = Ok("Im Ok");
-    expect(res.ok().value("Im not ok")).toBe("Im Ok");
-});
+export { InnerResult, Ok, Err };
