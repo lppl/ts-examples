@@ -1,88 +1,88 @@
-import { None, TOption, Some } from "./option";
+import { None, Some, TOption } from "./option";
 
-type InnerResult<TValue> = Readonly<{
+type InnerResult<TValue> = {
     ok(): TOption<TValue>;
     err(): TOption<Error>;
-    and<TTarget>(fn: (v: TValue) => TTarget): Result<TTarget>;
+    and<TTarget>(fn: (v: TValue) => TTarget): TResult<TTarget>;
     match<TTarget>(
-        someFn: (value: TValue) => TTarget,
-        noneFn: (err: Error) => TTarget,
+        okFn: (value: TValue) => TTarget,
+        errFn: (err: Error) => TTarget,
     ): TTarget;
     unwrap(): TValue;
-}>;
+};
 
-type Result<TValue> = InnerResult<
-    TValue extends InnerResult<infer TNestedValue> ? TNestedValue : TValue
->;
+type TResult<TValue> = TValue extends Result<infer U> ? TValue : Result<TValue>;
 
-class ResultOk<TValue> implements InnerResult<TValue> {
-    readonly #value: TValue;
+class Result<TValue> implements InnerResult<TValue> {
+    readonly #value?: TValue;
+    readonly #error?: Error;
+    readonly #isOk: boolean;
 
-    constructor(value: TValue) {
+    constructor(isOk: boolean, value?: TValue, error?: Error) {
+        this.#isOk = isOk;
         this.#value = value;
-    }
-
-    ok(): TOption<TValue> {
-        return Some(this.#value);
-    }
-
-    err(): TOption<Error> {
-        return None();
-    }
-
-    and<TTarget>(fn: (value: TValue) => TTarget): Result<TTarget> {
-        return Ok(fn(this.#value));
-    }
-
-    match<TTarget>(okFn: (value: TValue) => TTarget): TTarget {
-        return okFn(this.#value);
-    }
-
-    unwrap(): TValue {
-        return this.#value;
-    }
-}
-
-class ResultErr<TValue> implements InnerResult<TValue> {
-    readonly #error: Error;
-
-    constructor(error: Error) {
         this.#error = error;
     }
 
     ok(): TOption<TValue> {
-        return None();
+        if (this.#isOk) {
+            return Some(this.#value!);
+        } else {
+            return None();
+        }
     }
 
     err(): TOption<Error> {
-        return Some(this.#error);
+        if (!this.#isOk) {
+            return Some(this.#error!);
+        } else {
+            return None<Error>();
+        }
     }
 
-    and<TTarget>(_fn: (value: TValue) => TTarget): Result<TTarget> {
-        return this as Result<TTarget>;
+    and<TTarget>(
+        fn: (value: TValue) => TTarget,
+        errFn?: (err: Error) => TTarget,
+    ): TResult<TTarget> {
+        if (this.#isOk) {
+            return Ok(fn(this.#value!));
+        } else {
+            return Err(this.#error!);
+        }
     }
 
-    match<TTarget>(_: any, errFn: (error: Error) => TTarget): TTarget {
-        return errFn(this.#error);
+    match<TTarget>(
+        okFn: (value: TValue) => TTarget,
+        errFn: (error: Error) => TTarget,
+    ): TTarget {
+        if (this.#isOk) {
+            return okFn(this.#value!);
+        } else {
+            return errFn(this.#error!);
+        }
     }
 
     unwrap(): TValue {
-        throw Error("Tried to unwrap of Err Result", { cause: this.#error });
+        if (this.#isOk) {
+            return this.#value!;
+        } else {
+            throw Error("Tried to unwrap of Err Result", {
+                cause: this.#error,
+            });
+        }
     }
 }
 
-function Ok<TValue>(value: TValue): Result<TValue> {
-    if (value instanceof ResultOk) {
-        return value;
-    } else if (value instanceof ResultErr) {
-        return value;
+function Ok<TValue>(value: TValue): TResult<TValue> {
+    if (value instanceof Result) {
+        return value as TResult<TValue>;
     } else {
-        return Object.freeze(new ResultOk<TValue>(value)) as Result<TValue>;
+        return new Result<TValue>(true, value, undefined) as TResult<TValue>;
     }
 }
 
-function Err<TValue>(error: Error): Result<TValue> {
-    return Object.freeze(new ResultErr<TValue>(error)) as Result<TValue>;
+function Err<TValue>(error: Error): TResult<TValue> {
+    return new Result<TValue>(false, undefined, error) as TResult<TValue>;
 }
 
-export { Result, Ok, Err };
+export { TResult, Ok, Err };
