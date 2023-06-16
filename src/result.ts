@@ -4,6 +4,10 @@ type InnerResult<TValue> = {
     ok(): TOption<TValue>;
     err(): TOption<Error>;
     and<TTarget>(fn: (v: TValue) => TTarget): TResult<TTarget>;
+    then<TTarget>(
+        okFn: (v: TValue) => TTarget,
+        noneFn?: (e: Error) => TTarget,
+    ): Promise<TTarget>;
     match<TTarget>(
         okFn: (value: TValue) => TTarget,
         errFn: (err: Error) => TTarget,
@@ -48,6 +52,19 @@ class Result<TValue> implements InnerResult<TValue> {
             return Ok(fn(this.#value!));
         } else {
             return Err(this.#error!);
+        }
+    }
+
+    then<TTarget>(
+        fn: (value: TValue) => TTarget,
+        errFn?: (error: Error) => TTarget,
+    ): Promise<TTarget> {
+        if (this.#isOk) {
+            return Promise.resolve(this.#value!).then(fn, errFn);
+        } else if (errFn) {
+            return Promise.resolve(errFn(this.#error!));
+        } else {
+            return Promise.reject(this.#error);
         }
     }
 
