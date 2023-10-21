@@ -1,4 +1,4 @@
-function createPromise(fn: any) {
+function createPromise(resolver: any) {
     const _resolveListeners = new Set<any>();
     let _isResolved = false;
     let _data: any;
@@ -27,7 +27,11 @@ function createPromise(fn: any) {
         }
     }
 
-    fn(resolve);
+    if (typeof resolver !== "function") {
+        throw TypeError(`Promise resolver ${resolver} is not a function`);
+    }
+
+    resolver(resolve);
 
     return {
         then(fn: any) {

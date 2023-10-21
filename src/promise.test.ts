@@ -61,6 +61,21 @@ test.each`
 });
 
 test.each`
+    title             | value              | error
+    ${"an undefined"} | ${undefined}
+    ${"a number"}     | ${1}
+    ${"a null"}       | ${null}
+    ${"a NaN"}        | ${NaN}
+    ${"an object"}    | ${{}}
+    ${"fn"}           | ${() => undefined}
+`(
+    "promise constructor throws TypeError with $title instead of resolver",
+    async ({ resolver }) => {
+        expect(() => createPromise(resolver)).toThrowError();
+    },
+);
+
+test.each`
     title             | value
     ${"an undefined"} | ${undefined}
     ${"a number"}     | ${1}
@@ -69,12 +84,12 @@ test.each`
     ${"an object"}    | ${{}}
 `(
     "Promise then fails silently with $title instead of callback",
-    async (callback) => {
+    async ({ value }: any) => {
         const fn = jest.fn();
 
-        const value = await (createPromise((resolve: any) => resolve()).then(
-            callback,
+        const v = await (createPromise((resolve: any) => resolve()).then(
+            value,
         ) as any);
-        expect(value).toBeUndefined();
+        expect(v).toBeUndefined();
     },
 );
