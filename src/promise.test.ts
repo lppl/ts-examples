@@ -1,4 +1,5 @@
 import { createPromise } from "./promise";
+import * as wasi from "wasi";
 
 test("Promise run its callback function synchronously", () => {
     const fn = jest.fn();
@@ -93,3 +94,27 @@ test.each`
         expect(v).toBeUndefined();
     },
 );
+
+test("Promise can be rejected in constructor", (cb) => {
+    createPromise((_: any, reject: any) => reject(21))
+        .then(undefined, (reason: any) => {
+            expect(reason).toBe(21);
+            return reason * 2;
+        })
+        .then((correct: any) => {
+            expect(correct).toBe(42);
+            cb();
+        });
+});
+
+test("Promise catch ", (cb) => {
+    createPromise((_: any, reject: any) => reject(21))
+        .catch((reason: any) => {
+            expect(reason).toBe(21);
+            return 42;
+        })
+        .then((data: any) => {
+            expect(data).toBe(42);
+            cb();
+        });
+});
