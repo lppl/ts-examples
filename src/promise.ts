@@ -1,4 +1,17 @@
-function createPromise(resolver: any) {
+type TPromise<InType, OutType = unknown> = {
+    then: (
+        onResolve?: (v: InType) => OutType,
+        onReject?: (v: unknown) => OutType,
+    ) => TPromise<OutType>;
+    catch: (onReject: (v: unknown) => OutType) => TPromise<unknown, OutType>;
+};
+
+function createPromise<InType, OutType>(
+    resolver: (
+        resolve: (v: InType) => void,
+        reject: (v: unknown) => void,
+    ) => void,
+): TPromise<InType, OutType> {
     const _resolveListeners = new Set<any>();
     const _rejectListeners = new Set<any>();
     let _isResolved = false;
