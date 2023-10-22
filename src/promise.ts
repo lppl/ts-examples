@@ -56,18 +56,30 @@ function createPromise(resolver: any) {
 
     return {
         then(onResolve?: any, onReject?: any) {
-            return createPromise((resolve: any) => {
+            return createPromise((resolve: any, reject: any) => {
                 if (typeof onResolve === "function") {
-                    _resolveListeners.add((data: any) =>
-                        resolve(onResolve(data)),
-                    );
+                    _resolveListeners.add((data: any) => {
+                        try {
+                            resolve(onResolve(data));
+                        } catch (error) {
+                            if (typeof onReject === "function") {
+                                reject(onReject(error));
+                            } else {
+                                reject(error);
+                            }
+                        }
+                    });
                 } else {
                     _resolveListeners.add(() => resolve(undefined));
                 }
                 if (typeof onReject === "function") {
-                    _rejectListeners.add((data: any) =>
-                        resolve(onReject(data)),
-                    );
+                    _rejectListeners.add((data: any) => {
+                        try {
+                            resolve(onReject(data));
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });
                 } else {
                     _rejectListeners.add(() => resolve(undefined));
                 }

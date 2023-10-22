@@ -1,5 +1,4 @@
 import { createPromise } from "./promise";
-import * as wasi from "wasi";
 
 test("Promise run its callback function synchronously", () => {
     const fn = jest.fn();
@@ -117,4 +116,37 @@ test("Promise catch ", (cb) => {
             expect(data).toBe(42);
             cb();
         });
+});
+
+test("When .then onResolve callback throws an error then promise is rejected", async () => {
+    await (createPromise((resolve: any) => resolve(21))
+        .then((reason: any) => {
+            throw Error("Promise resolver failed.");
+        })
+        .then(
+            (data: any) => {
+                throw Error("This should not run");
+            },
+            (error: any) => {
+                expect(error).toEqual(Error("Promise resolver failed."));
+            },
+        ) as any);
+});
+
+test("When .then onReject callback throws an error then promise is rejected", async () => {
+    await (createPromise((_: any, reject: any) => reject(21))
+        .then(
+            () => undefined,
+            () => {
+                throw Error("Promise reject failed.");
+            },
+        )
+        .then(
+            (data: any) => {
+                throw Error("This should not run");
+            },
+            (error: any) => {
+                expect(error).toEqual(Error("Promise reject failed."));
+            },
+        ) as any);
 });
