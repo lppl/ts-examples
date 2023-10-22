@@ -6,9 +6,9 @@ type TPromise<InType, OutType = unknown> = {
     catch: (onReject: (v: unknown) => OutType) => TPromise<unknown, OutType>;
 };
 
-function createPromise<InType, OutType>(
-    resolver: (
-        resolve: (v: InType) => void,
+function createPromise<InType, OutType = unknown>(
+    executor: (
+        resolve: (v: InType | TPromise<InType>) => void,
         reject: (v: unknown) => void,
     ) => void,
 ): TPromise<InType, OutType> {
@@ -19,11 +19,11 @@ function createPromise<InType, OutType>(
     let _data: any;
     let _isDataAPromise: boolean;
 
-    function resolve(data: any) {
+    function resolve(data: InType | TPromise<InType>) {
         if (_data && typeof _data.then === "function") {
-            data.then(
-                (newData: any) => resolve(newData),
-                (newData: any) => reject(newData),
+            (data as TPromise<InType>).then(
+                (newData) => resolve(newData),
+                (error) => reject(error),
             );
         } else {
             _data = data;
@@ -36,7 +36,7 @@ function createPromise<InType, OutType>(
     function reject(data: any) {
         if (_data && typeof _data.then === "function") {
             data.then(
-                (newData: any) => resolve(newData),
+                (newData: InType) => resolve(newData),
                 (newData: any) => reject(newData),
             );
         } else {
@@ -61,11 +61,11 @@ function createPromise<InType, OutType>(
         }
     }
 
-    if (typeof resolver !== "function") {
-        throw TypeError(`Promise resolver ${resolver} is not a function`);
+    if (typeof executor !== "function") {
+        throw TypeError(`Promise resolver ${executor} is not a function`);
     }
 
-    resolver(resolve, reject);
+    executor(resolve, reject);
 
     return {
         then(onResolve?: any, onReject?: any) {
