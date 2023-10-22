@@ -11,14 +11,14 @@ test("Promise run its callback function synchronously", () => {
 test("Promise happy path with then", (cb) => {
     const fn = jest.fn();
 
-    createPromise((resolve: any) => resolve(42)).then((data: any) => {
+    createPromise((resolve) => resolve(42)).then((data) => {
         expect(data).toBe(42);
         cb();
     });
 });
 
 test("Promise run its callback function asynchronously", async () => {
-    const result = await (createPromise((resolve: any) =>
+    const result = await (createPromise((resolve) =>
         setTimeout(() => resolve(42)),
     ) as any);
 
@@ -28,11 +28,12 @@ test("Promise run its callback function asynchronously", async () => {
 test("Promise then transformation happy path", (cb) => {
     const fn = jest.fn();
 
-    createPromise((resolve: any) => resolve(21))
-        .then((data: any) => {
-            return data * 2;
+    createPromise((resolve) => resolve(21))
+        .then((data) => {
+            expect(data).toBe(21);
+            return 42;
         })
-        .then((data: any) => {
+        .then((data) => {
             expect(data).toBe(42);
             cb();
         });
@@ -40,22 +41,20 @@ test("Promise then transformation happy path", (cb) => {
 
 test.each`
     title                 | fn
-    ${"built in Promise"} | ${(value: any) => Promise.resolve(value)}
-    ${"createPromise"}    | ${(value: any) => createPromise((resolve: any) => resolve(value))}
+    ${"built in Promise"} | ${(value: unknown) => Promise.resolve(value)}
+    ${"createPromise"}    | ${(value: unknown) => createPromise((resolve) => resolve(value))}
 `("createPromise flattens return promise for $title", async ({ fn }) => {
-    const ret = await (createPromise((resolve: any) => resolve(fn(42))) as any);
+    const ret = await (createPromise((resolve) => resolve(fn(42))) as any);
 
     expect(ret).toBe(42);
 });
 
 test.each`
     title                 | fn
-    ${"built in Promise"} | ${(value: any) => Promise.resolve(value)}
-    ${"createPromise"}    | ${(value: any) => createPromise((resolve: any) => resolve(value))}
+    ${"built in Promise"} | ${(value: unknown) => Promise.resolve(value)}
+    ${"createPromise"}    | ${(value: unknown) => createPromise((resolve) => resolve(value))}
 `("createPromise.then flattens return promise for $title", async ({ fn }) => {
-    const ret = await (createPromise((resolve: any) => resolve(42)).then(
-        fn,
-    ) as any);
+    const ret = await (createPromise((resolve) => resolve(42)).then(fn) as any);
 
     expect(ret).toBe(42);
 });
@@ -84,57 +83,56 @@ test.each`
     ${"an object"}    | ${{}}
 `(
     "Promise then fails silently with $title instead of callback",
-    async ({ value }: any) => {
+    async ({ value }) => {
         const fn = jest.fn();
-
-        const v = await (createPromise((resolve: any) => resolve()).then(
-            value,
-        ) as any);
+        const v = await (createPromise<void, unknown>((resolve) =>
+            resolve(),
+        ).then(value) as any);
         expect(v).toBeUndefined();
     },
 );
 
 test("Promise can be rejected in constructor", (cb) => {
-    createPromise((_: any, reject: any) => reject(21))
-        .then(undefined, (reason: any) => {
+    createPromise((_, reject) => reject(21))
+        .then(undefined, (reason) => {
             expect(reason).toBe(21);
-            return reason * 2;
+            return 42;
         })
-        .then((correct: any) => {
+        .then((correct) => {
             expect(correct).toBe(42);
             cb();
         });
 });
 
 test("Promise catch ", (cb) => {
-    createPromise((_: any, reject: any) => reject(21))
-        .catch((reason: any) => {
+    createPromise((_, reject) => reject(21))
+        .catch((reason) => {
             expect(reason).toBe(21);
             return 42;
         })
-        .then((data: any) => {
+        .then((data) => {
             expect(data).toBe(42);
             cb();
         });
 });
 
 test("When .then onResolve callback throws an error then promise is rejected", async () => {
-    await (createPromise((resolve: any) => resolve(21))
-        .then((reason: any) => {
+    await (createPromise((resolve) => resolve(21))
+        .then((reason) => {
             throw Error("Promise resolver failed.");
         })
         .then(
-            (data: any) => {
+            (data) => {
                 throw Error("This should not run");
             },
-            (error: any) => {
+            (error) => {
                 expect(error).toEqual(Error("Promise resolver failed."));
             },
         ) as any);
 });
 
 test("When .then onReject callback throws an error then promise is rejected", async () => {
-    await (createPromise((_: any, reject: any) => reject(21))
+    await (createPromise((_, reject) => reject(21))
         .then(
             () => undefined,
             () => {
@@ -142,10 +140,10 @@ test("When .then onReject callback throws an error then promise is rejected", as
             },
         )
         .then(
-            (data: any) => {
+            (data) => {
                 throw Error("This should not run");
             },
-            (error: any) => {
+            (error) => {
                 expect(error).toEqual(Error("Promise reject failed."));
             },
         ) as any);
