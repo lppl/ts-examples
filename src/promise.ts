@@ -6,6 +6,10 @@ type TPromise<InType, OutType = unknown> = {
     catch: (onReject: (v: unknown) => OutType) => TPromise<unknown, OutType>;
 };
 
+function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
+    return Boolean(data && typeof (data as any).then === "function");
+}
+
 function createPromise<InType, OutType = unknown>(
     executor: (
         resolve: (v: InType | TPromise<InType>) => void,
@@ -20,8 +24,8 @@ function createPromise<InType, OutType = unknown>(
     let _isDataAPromise: boolean;
 
     function resolve(data: InType | TPromise<InType>) {
-        if (_data && typeof _data.then === "function") {
-            (data as TPromise<InType>).then(
+        if (isPromiseLike(data)) {
+            data.then(
                 (newData) => resolve(newData),
                 (error) => reject(error),
             );
@@ -34,7 +38,7 @@ function createPromise<InType, OutType = unknown>(
     }
 
     function reject(data: any) {
-        if (_data && typeof _data.then === "function") {
+        if (isPromiseLike(_data)) {
             data.then(
                 (newData: InType) => resolve(newData),
                 (newData: any) => reject(newData),
