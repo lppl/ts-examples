@@ -13,7 +13,7 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
 function createPromise<InType, OutType = unknown>(
     executor: (
         resolve: (v: InType | TPromise<InType>) => void,
-        reject: (v: unknown) => void,
+        reject: (v?: unknown) => void,
     ) => void,
 ): TPromise<InType, OutType> {
     const _resolveListeners = new Set<any>();
@@ -107,14 +107,16 @@ function createPromise<InType, OutType = unknown>(
         },
         catch(onReject: any) {
             return createPromise((resolve: any) => {
-                if (typeof onReject === "function") {
-                    _rejectListeners.add((data: any) =>
-                        resolve(onReject(data)),
-                    );
-                } else {
-                    _rejectListeners.add(() => resolve(undefined));
-                }
-                trigger();
+                setTimeout(() => {
+                    if (typeof onReject === "function") {
+                        _rejectListeners.add((data: any) =>
+                            resolve(onReject(data)),
+                        );
+                    } else {
+                        _rejectListeners.add(() => resolve(undefined));
+                    }
+                    trigger();
+                });
             });
         },
     };

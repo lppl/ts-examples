@@ -122,6 +122,17 @@ test("Promise catch ", (cb) => {
         });
 });
 
+test("Rejected promise .catch runs callback asynchronously ", async () => {
+    const fn = jest.fn();
+    const promise = createPromise<void>((_, reject) => reject()).catch(fn);
+
+    expect(fn).toBeCalledTimes(0);
+
+    await (promise as any);
+
+    expect(fn).toBeCalledTimes(1);
+});
+
 test("When .then onResolve callback throws an error then promise is rejected", async () => {
     await (createPromise((resolve) => resolve(21))
         .then(() => {
