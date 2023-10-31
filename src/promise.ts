@@ -38,6 +38,19 @@ class Foobar {
         });
     }
 
+    catch(onRejection: any) {
+        return new Foobar((fulfill: any, reject: any) => {
+            setTimeout(
+                this.#register,
+                0,
+                fulfill,
+                reject,
+                undefined,
+                onRejection,
+            );
+        });
+    }
+
     get #isResolved(): boolean {
         return this.#isFulfilled || this.#isRejected;
     }
