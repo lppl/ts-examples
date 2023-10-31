@@ -83,7 +83,7 @@ class Foobar {
             fulfill,
             reject,
             this.#fnOrIdent(onFulfillment),
-            onRejection,
+            this.#fnOrIdent(onRejection),
         ]);
         this.#trigger();
     };
