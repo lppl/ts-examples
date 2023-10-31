@@ -26,7 +26,6 @@ class Foobar {
     }
 
     then(onFulfillment: any, onRejection: any) {
-        console.log(".then");
         return new Foobar((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
@@ -44,7 +43,7 @@ class Foobar {
     }
 
     #resolve = (data: unknown): void => {
-        if (this.#isFulfilled) {
+        if (this.#isResolved) {
             return;
         }
         this.#isFulfilled = true;
@@ -53,7 +52,7 @@ class Foobar {
     };
 
     #reject = (data: unknown): void => {
-        if (this.#isFulfilled) {
+        if (this.#isResolved) {
             return;
         }
         this.#isRejected = true;
@@ -94,7 +93,7 @@ class Foobar {
         reject: any,
         onFulfillment: any,
         onReject: any,
-    ) {
+    ): void {
         if (this.#isFulfilled) {
             try {
                 fulfill(onFulfillment(this.#data));
@@ -104,7 +103,7 @@ class Foobar {
         }
         if (this.#isRejected) {
             try {
-                reject(onReject(this.#data));
+                fulfill(onReject(this.#data));
             } catch (error) {
                 reject(error);
             }
