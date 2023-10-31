@@ -10,116 +10,69 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
     return Boolean(data && typeof (data as any).then === "function");
 }
 
+class Foobar {
+    #data: unknown;
+
+    #isFulfilled: boolean = false;
+    #isRejected: boolean = false;
+
+    #fulfillmentListeners = new Set<any>();
+    #rejectedListeners = new Set<any>();
+
+    constructor(callback: any) {
+        callback();
+    }
+
+    then(onFulfillment: any, onRejection: any) {
+        this.#fulfillmentListeners.add(onFulfillment);
+        this.#rejectedListeners.add(onRejection);
+        return new Foobar((fulfill: any, reject: any) => {
+            setTimeout(this.#trigger);
+        });
+    }
+
+    get #isResolved() {
+        return this.#isFulfilled || this.#isRejected;
+    }
+
+    get #isPending() {
+        return !this.#isResolved;
+    }
+
+    #resolve(data: unknown) {
+        this.#isFulfilled = true;
+        this.#data = data;
+    }
+
+    #reject(data: unknown) {
+        this.#isRejected = true;
+        this.#data = data;
+    }
+
+    #trigger() {
+        if (this.#isResolved) {
+            const listeners = this.#isFulfilled
+                ? this.#fulfillmentListeners
+                : this.#rejectedListeners;
+            for (const listener of listeners) {
+                if (isPromiseLike(this.#data)) {
+                    this.#data.then(listener);
+                } else {
+                    listener(this.#data);
+                }
+                listeners.delete(listener);
+            }
+        }
+    }
+}
+
 function createPromise<InType, OutType = unknown>(
     executor: (
         resolve: (v: InType | TPromise<InType>) => void,
         reject: (v?: unknown) => void,
     ) => void,
 ): TPromise<InType, OutType> {
-    const _resolveListeners = new Set<any>();
-    const _rejectListeners = new Set<any>();
-    let _isResolved = false;
-    let _isSuccess: boolean;
-    let _data: any;
-    let _isDataAPromise: boolean;
-
-    function resolve(data: InType | TPromise<InType>) {
-        if (isPromiseLike(data)) {
-            data.then(
-                (newData) => resolve(newData),
-                (error) => reject(error),
-            );
-        } else {
-            _data = data;
-            _isResolved = true;
-            _isSuccess = true;
-            trigger();
-        }
-    }
-
-    function reject(data: any) {
-        if (isPromiseLike(_data)) {
-            data.then(
-                (newData: InType) => resolve(newData),
-                (newData: any) => reject(newData),
-            );
-        } else {
-            _data = data;
-            _isResolved = true;
-            _isSuccess = false;
-            trigger();
-        }
-    }
-
-    function trigger() {
-        if (_isResolved) {
-            const listeners = _isSuccess ? _resolveListeners : _rejectListeners;
-            for (const listener of listeners) {
-                if (_isDataAPromise) {
-                    _data.then(listener);
-                } else {
-                    listener(_data);
-                }
-                _resolveListeners.delete(listener);
-            }
-        }
-    }
-
-    if (typeof executor !== "function") {
-        throw TypeError(`Promise resolver ${executor} is not a function`);
-    }
-
-    executor(resolve, reject);
-
-    return {
-        then(onResolve?: any, onReject?: any) {
-            return createPromise((resolve: any, reject: any) => {
-                setTimeout(() => {
-                    if (typeof onResolve === "function") {
-                        _resolveListeners.add((data: any) => {
-                            try {
-                                resolve(onResolve(data));
-                            } catch (error) {
-                                if (typeof onReject === "function") {
-                                    reject(onReject(error));
-                                } else {
-                                    reject(error);
-                                }
-                            }
-                        });
-                    } else {
-                        _resolveListeners.add(() => resolve(undefined));
-                    }
-                    if (typeof onReject === "function") {
-                        _rejectListeners.add((data: any) => {
-                            try {
-                                resolve(onReject(data));
-                            } catch (error) {
-                                reject(error);
-                            }
-                        });
-                    } else {
-                        _rejectListeners.add(() => resolve(undefined));
-                    }
-                    trigger();
-                });
-            });
-        },
-        catch(onReject: any) {
-            return createPromise((resolve: any) => {
-                setTimeout(() => {
-                    if (typeof onReject === "function") {
-                        _rejectListeners.add((data: any) =>
-                            resolve(onReject(data)),
-                        );
-                    } else {
-                        _rejectListeners.add(() => resolve(undefined));
-                    }
-                    trigger();
-                });
-            });
-        },
-    };
+    return new Foobar(executor) as any;
 }
 
 export { createPromise };
