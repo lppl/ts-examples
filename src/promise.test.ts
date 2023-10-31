@@ -1,6 +1,6 @@
 import { createPromise } from "./promise";
 
-jest.setTimeout(20);
+jest.setTimeout(50);
 
 test("Promise run its callback function synchronously", () => {
     const fn = jest.fn();

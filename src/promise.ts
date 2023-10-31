@@ -23,6 +23,7 @@ class Foobar {
     }
 
     then(onFulfillment: any, onRejection: any) {
+        console.log(".then");
         return new Foobar((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
@@ -67,15 +68,20 @@ class Foobar {
         onFulfillment: any,
         onRejection: any,
     ): void => {
+        console.log(".register");
         this.#listeners.add([fulfill, reject, onFulfillment, onRejection]);
+        this.#trigger();
     };
 
     #trigger() {
+        console.log(".trigger");
         if (this.#isResolved) {
             for (const listener of this.#listeners) {
                 this.#processListener(...listener);
                 this.#listeners.delete(listener);
             }
+        } else {
+            console.log(".trigger unresolved");
         }
     }
 
