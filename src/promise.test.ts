@@ -20,7 +20,7 @@ test("Promise can resolve asynchronously", async () => {
         setTimeout(() => resolve(42)),
     ) as any);
 
-    expect(result).toBe(result);
+    expect(result).toBe(42);
 });
 
 test("Resolved promise run its callback asynchronously", async () => {
