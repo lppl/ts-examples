@@ -10,6 +10,9 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
     return Boolean(data && typeof (data as any).then === "function");
 }
 
+const noop = (): void => undefined;
+const ident = <T>(data: T): T => data;
+
 class Foobar {
     #data: unknown;
 
@@ -40,10 +43,6 @@ class Foobar {
         return this.#isFulfilled || this.#isRejected;
     }
 
-    get #isPending(): boolean {
-        return !this.#isResolved;
-    }
-
     #resolve = (data: unknown): void => {
         if (this.#isFulfilled) {
             return;
@@ -68,28 +67,33 @@ class Foobar {
         onFulfillment: any,
         onRejection: any,
     ): void => {
-        console.log(".register");
-        this.#listeners.add([fulfill, reject, onFulfillment, onRejection]);
+        this.#listeners.add([
+            fulfill,
+            reject,
+            this.#fnOrIdent(onFulfillment),
+            onRejection,
+        ]);
         this.#trigger();
     };
 
+    #fnOrIdent(fn: unknown) {
+        return typeof fn === "function" ? fn : ident;
+    }
+
     #trigger() {
-        console.log(".trigger");
         if (this.#isResolved) {
             for (const listener of this.#listeners) {
                 this.#processListener(...listener);
                 this.#listeners.delete(listener);
             }
-        } else {
-            console.log(".trigger unresolved");
         }
     }
 
     #processListener(
         fulfill: any,
         reject: any,
-        onFulfillment: any = (data: any) => data,
-        onReject: any = (data: any) => data,
+        onFulfillment: any,
+        onReject: any,
     ) {
         if (this.#isFulfilled) {
             try {
