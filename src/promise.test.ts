@@ -110,6 +110,26 @@ test("Promise can be rejected in constructor", (cb) => {
         });
 });
 
+test("Promise can be fulfilled only once", async () => {
+    const promise = createPromise((fulfill) => {
+        fulfill(42);
+        fulfill(45);
+    });
+    expect(await promise).toBe(42);
+});
+
+test("Promise can be rejected only once", (cb) => {
+    const promise = createPromise((_, reject) => {
+        reject("a");
+        reject("b");
+    });
+
+    promise.catch((v) => {
+        expect(v).toBe("a");
+        cb();
+    });
+});
+
 test("Promise catch ", (cb) => {
     createPromise((_, reject) => reject(21))
         .catch((reason) => {

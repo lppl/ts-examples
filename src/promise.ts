@@ -24,6 +24,9 @@ function createPromise<InType, OutType = unknown>(
     let _isDataAPromise: boolean;
 
     function resolve(data: InType | TPromise<InType>) {
+        if (_isResolved) {
+            return;
+        }
         if (isPromiseLike(data)) {
             data.then(
                 (newData) => resolve(newData),
@@ -38,6 +41,9 @@ function createPromise<InType, OutType = unknown>(
     }
 
     function reject(data: any) {
+        if (_isResolved) {
+            return;
+        }
         if (isPromiseLike(_data)) {
             data.then(
                 (newData: InType) => resolve(newData),
