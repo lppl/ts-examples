@@ -15,12 +15,23 @@ test("Promise happy path with then", (cb) => {
     });
 });
 
-test("Promise run its callback function asynchronously", async () => {
+test("Promise can resolve asynchronously", async () => {
     const result = await (createPromise((resolve) =>
         setTimeout(() => resolve(42)),
     ) as any);
 
     expect(result).toBe(result);
+});
+
+test("Resolved promise run its callback asynchronously", async () => {
+    const fn = jest.fn();
+    const promise = createPromise<void>((resolve) => resolve()).then(fn);
+
+    expect(fn).toBeCalledTimes(0);
+
+    await promise;
+
+    expect(fn).toBeCalledTimes(1);
 });
 
 test("Promise then transformation happy path", (cb) => {
