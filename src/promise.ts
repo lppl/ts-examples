@@ -16,51 +16,87 @@ class Foobar {
     #isFulfilled: boolean = false;
     #isRejected: boolean = false;
 
-    #fulfillmentListeners = new Set<any>();
-    #rejectedListeners = new Set<any>();
+    #listeners = new Set<[any, any, any, any]>();
 
     constructor(callback: any) {
-        callback();
+        callback(this.#resolve, this.#reject);
     }
 
     then(onFulfillment: any, onRejection: any) {
-        this.#fulfillmentListeners.add(onFulfillment);
-        this.#rejectedListeners.add(onRejection);
         return new Foobar((fulfill: any, reject: any) => {
-            setTimeout(this.#trigger);
+            setTimeout(
+                this.#register,
+                0,
+                fulfill,
+                reject,
+                onFulfillment,
+                onRejection,
+            );
         });
     }
 
-    get #isResolved() {
+    get #isResolved(): boolean {
         return this.#isFulfilled || this.#isRejected;
     }
 
-    get #isPending() {
+    get #isPending(): boolean {
         return !this.#isResolved;
     }
 
-    #resolve(data: unknown) {
+    #resolve = (data: unknown): void => {
+        if (this.#isFulfilled) {
+            return;
+        }
         this.#isFulfilled = true;
         this.#data = data;
-    }
+        this.#trigger();
+    };
 
-    #reject(data: unknown) {
+    #reject = (data: unknown): void => {
+        if (this.#isFulfilled) {
+            return;
+        }
         this.#isRejected = true;
         this.#data = data;
-    }
+        this.#trigger();
+    };
+
+    #register = (
+        fulfill: any,
+        reject: any,
+        onFulfillment: any,
+        onRejection: any,
+    ): void => {
+        this.#listeners.add([fulfill, reject, onFulfillment, onRejection]);
+    };
 
     #trigger() {
         if (this.#isResolved) {
-            const listeners = this.#isFulfilled
-                ? this.#fulfillmentListeners
-                : this.#rejectedListeners;
-            for (const listener of listeners) {
-                if (isPromiseLike(this.#data)) {
-                    this.#data.then(listener);
-                } else {
-                    listener(this.#data);
-                }
-                listeners.delete(listener);
+            for (const listener of this.#listeners) {
+                this.#processListener(...listener);
+                this.#listeners.delete(listener);
+            }
+        }
+    }
+
+    #processListener(
+        fulfill: any,
+        reject: any,
+        onFulfillment: any = (data: any) => data,
+        onReject: any = (data: any) => data,
+    ) {
+        if (this.#isFulfilled) {
+            try {
+                fulfill(onFulfillment(this.#data));
+            } catch (error) {
+                reject(onReject(error));
+            }
+        }
+        if (this.#isRejected) {
+            try {
+                reject(onReject(this.#data));
+            } catch (error) {
+                reject(error);
             }
         }
     }
