@@ -1,16 +1,11 @@
-type TPromise<InType, OutType = unknown> = {
-    then: (
-        onResolve?: (v: InType) => OutType,
-        onReject?: (v: unknown) => OutType,
-    ) => TPromise<OutType>;
-    catch: (onReject: (v: unknown) => OutType) => TPromise<unknown, OutType>;
-};
+import { TResult } from "./result";
 
-function isThenable<T>(data: unknown | TPromise<T>): data is TPromise<T> {
-    return Boolean(data && typeof (data as any).then === "function");
+function isThenable<T>(
+    value: unknown | PromiseLike<T>,
+): value is PromiseLike<T> {
+    return Boolean(value && typeof (value as any).then === "function");
 }
 
-const noop = (): void => undefined;
 const ident = <T>(data: T): T => data;
 
 class Resolve {
@@ -29,35 +24,55 @@ class Resolve {
     }
 }
 
-class MyPromise {
+class MyPromise<T> {
     #data: unknown;
 
     #isFulfilled: boolean = false;
     #isRejected: boolean = false;
+
     get #isSettled(): boolean {
         return this.#isFulfilled || this.#isRejected;
     }
 
     #resolves = new Set<Resolve>();
 
-    constructor(callback: any) {
-        callback(this.#resolve, this.#reject);
+    constructor(
+        executor: (
+            resolve: (value: T | PromiseLike<T>) => void,
+            reject: (reason?: any) => void,
+        ) => void,
+    ) {
+        executor(this.#resolve, this.#reject);
     }
 
-    then(onFulfillment: any, onRejection: any) {
+    then<TResult1 = T, TResult2 = never>(
+        onfulfilled?:
+            | ((value: T) => PromiseLike<TResult1> | TResult1)
+            | undefined
+            | null,
+        onrejected?:
+            | ((reason: any) => PromiseLike<TResult2> | TResult2)
+            | undefined
+            | null,
+    ): MyPromise<TResult1 | TResult2> {
         return new MyPromise((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
                 0,
                 fulfill,
                 reject,
-                onFulfillment,
-                onRejection,
+                onfulfilled,
+                onrejected,
             );
         });
     }
 
-    catch(onRejection: any) {
+    catch<TResult = never>(
+        onrejected?:
+            | ((reason: any) => PromiseLike<TResult> | TResult)
+            | undefined
+            | null,
+    ): MyPromise<T | TResult> {
         return new MyPromise((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
@@ -65,7 +80,7 @@ class MyPromise {
                 fulfill,
                 reject,
                 undefined,
-                onRejection,
+                onrejected,
             );
         });
     }
@@ -131,12 +146,12 @@ class MyPromise {
     }
 }
 
-function createPromise<InType, OutType = unknown>(
+function createPromise<T>(
     executor: (
-        resolve: (v: InType | TPromise<InType>) => void,
-        reject: (v?: unknown) => void,
+        resolve: (value: T | PromiseLike<T>) => void,
+        reject: (reason?: any) => void,
     ) => void,
-): TPromise<InType, OutType> {
+): MyPromise<T> {
     return new MyPromise(executor) as any;
 }
 
