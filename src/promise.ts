@@ -6,7 +6,7 @@ type TPromise<InType, OutType = unknown> = {
     catch: (onReject: (v: unknown) => OutType) => TPromise<unknown, OutType>;
 };
 
-function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
+function isThenable<T>(data: unknown | TPromise<T>): data is TPromise<T> {
     return Boolean(data && typeof (data as any).then === "function");
 }
 
@@ -72,6 +72,10 @@ class MyPromise {
 
     #resolve = (data: unknown): void => {
         if (this.#isSettled) {
+            return;
+        }
+        if (isThenable(data)) {
+            data.then(this.#resolve, this.#reject);
             return;
         }
         this.#isFulfilled = true;
