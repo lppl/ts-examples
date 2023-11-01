@@ -22,12 +22,12 @@ describe.each`
         });
 
         test("executor can resolve asynchronously", (done) => {
-            const promise = createPromise((resolve) =>
-                setTimeout(() => resolve(42)),
+            const promise = createPromise((fulfill) =>
+                setTimeout(() => fulfill(42)),
             );
 
-            promise.then((result) => {
-                expect(result).toBe(42);
+            promise.then((value) => {
+                expect(value).toBe(42);
                 done();
             });
         });
@@ -35,23 +35,23 @@ describe.each`
         test.each`
             title                  | fn
             ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
-            ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
+            ${"my implementation"} | ${(value: unknown) => createPromise((fulfill) => fulfill(value))}
         `(
             "executor(resolve) flattens thenable result ($title)",
             ({ fn }, done) => {
-                const promise = createPromise((resolve) => {
-                    resolve(fn(42));
+                const promise = createPromise((fulfill) => {
+                    fulfill(fn(42));
                 });
 
-                promise.then((data) => {
-                    expect(data).toBe(42);
+                promise.then((value) => {
+                    expect(value).toBe(42);
                     done();
                 });
             },
         );
 
         test.each`
-            title             | value              | error
+            title             | executor
             ${"an undefined"} | ${undefined}
             ${"a number"}     | ${1}
             ${"a null"}       | ${null}
@@ -60,8 +60,8 @@ describe.each`
             ${"fn"}           | ${() => undefined}
         `(
             "executor throws TypeError when $title have been passed instead of resolver",
-            ({ resolver }) => {
-                expect(() => createPromise(resolver)).toThrowError();
+            ({ executor }) => {
+                expect(() => createPromise(executor)).toThrowError();
             },
         );
 
@@ -72,22 +72,22 @@ describe.each`
                 return reason;
             });
 
-            fixedPromise.then((correct) => {
-                expect(correct).toBe(21);
+            fixedPromise.then((value) => {
+                expect(value).toBe(21);
                 done();
             });
         });
 
-        test(".then(onFulfillment) happy path", (cb) => {
-            createPromise((resolve) => resolve(42)).then((data) => {
-                expect(data).toBe(42);
-                cb();
+        test(".then(onfulfilled) happy path", (done) => {
+            createPromise((fulfill) => fulfill(42)).then((value) => {
+                expect(value).toBe(42);
+                done();
             });
         });
 
-        test(".then(onFulfillment) callback is run asynchronously", async () => {
+        test(".then(onfulfilled) callback is run asynchronously", async () => {
             const fn = jest.fn();
-            const promise = createPromise<void>((resolve) => resolve()).then(
+            const promise = createPromise<void>((fulfill) => fulfill()).then(
                 fn,
             );
 
@@ -98,15 +98,15 @@ describe.each`
             expect(fn).toBeCalledTimes(1);
         });
 
-        test(".then(onFulfillment) chain with another .then(onFulfillment)", (cb) => {
-            createPromise((resolve) => resolve(21))
-                .then((data) => {
-                    expect(data).toBe(21);
+        test(".then(onfulfilled) chain with another .then(onfulfilled)", (done) => {
+            createPromise((fulfill) => fulfill(21))
+                .then((value) => {
+                    expect(value).toBe(21);
                     return 42;
                 })
-                .then((data) => {
-                    expect(data).toBe(42);
-                    cb();
+                .then((value) => {
+                    expect(value).toBe(42);
+                    done();
                 });
         });
 
@@ -117,14 +117,14 @@ describe.each`
         `(
             ".then(onFulfill) flattens thenable result ($title)",
             ({ fn }, done) => {
-                const promise = createPromise((resolve) => {
-                    resolve(undefined);
+                const promise = createPromise((fulfill) => {
+                    fulfill(undefined);
                 }).then(() => {
                     return fn(42);
                 });
 
-                promise.then((data) => {
-                    expect(data).toBe(42);
+                promise.then((value) => {
+                    expect(value).toBe(42);
                     done();
                 });
             },
@@ -140,12 +140,12 @@ describe.each`
         `(
             ".then(onFulfill) fails silently with $title instead of onFulfill callback",
             ({ incorrectOnFulfillment }, done) => {
-                const promise = createPromise<void>((resolve) =>
-                    resolve(),
+                const promise = createPromise<void>((fulfill) =>
+                    fulfill(),
                 ).then(incorrectOnFulfillment);
 
-                promise.then((data) => {
-                    expect(data).toBeUndefined();
+                promise.then((value) => {
+                    expect(value).toBeUndefined();
                     done();
                 });
             },
@@ -179,8 +179,8 @@ describe.each`
                     () => {
                         throw Error("This should not run");
                     },
-                    (error) => {
-                        expect(error).toEqual(Error("Promise reject failed."));
+                    (reason) => {
+                        expect(reason).toEqual(Error("Promise reject failed."));
                     },
                 ) as any);
         });
@@ -191,8 +191,8 @@ describe.each`
                     expect(reason).toBe(21);
                     return 42;
                 })
-                .then((data) => {
-                    expect(data).toBe(42);
+                .then((value) => {
+                    expect(value).toBe(42);
                     done();
                 });
         });
