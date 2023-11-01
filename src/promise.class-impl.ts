@@ -12,11 +12,11 @@ class Resolve {
     constructor(
         readonly fulfill: any,
         readonly reject: any,
-        readonly onFulfillment: any,
-        readonly onReject: any,
+        readonly onfulfilled: any,
+        readonly onreject: any,
     ) {
-        this.onFulfillment = this.#fnOrIdent(onFulfillment);
-        this.onReject = this.#fnOrIdent(onReject);
+        this.onfulfilled = this.#fnOrIdent(onfulfilled);
+        this.onreject = this.#fnOrIdent(onreject);
     }
 
     #fnOrIdent(fn: unknown) {
@@ -128,19 +128,19 @@ class MyPromise<T> {
         }
     }
 
-    #processResolve(listener: Resolve): void {
+    #processResolve(resolve: Resolve): void {
         if (this.#isFulfilled) {
             try {
-                listener.fulfill(listener.onFulfillment(this.#data));
+                resolve.fulfill(resolve.onfulfilled(this.#data));
             } catch (error) {
-                listener.reject(listener.onReject(error));
+                resolve.reject(resolve.onreject(error));
             }
         }
         if (this.#isRejected) {
             try {
-                listener.fulfill(listener.onReject(this.#data));
+                resolve.fulfill(resolve.onreject(this.#data));
             } catch (error) {
-                listener.reject(error);
+                resolve.reject(error);
             }
         }
     }
