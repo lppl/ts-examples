@@ -13,7 +13,7 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
 const noop = (): void => undefined;
 const ident = <T>(data: T): T => data;
 
-class ResolvementCallbacks {
+class Resolve {
     constructor(
         readonly fulfill: any,
         readonly reject: any,
@@ -29,7 +29,7 @@ class ResolvementCallbacks {
     }
 }
 
-class Foobar {
+class MyPromise {
     #data: unknown;
 
     #isFulfilled: boolean = false;
@@ -38,14 +38,14 @@ class Foobar {
         return this.#isFulfilled || this.#isRejected;
     }
 
-    #resolvements = new Set<ResolvementCallbacks>();
+    #resolves = new Set<Resolve>();
 
     constructor(callback: any) {
         callback(this.#resolve, this.#reject);
     }
 
     then(onFulfillment: any, onRejection: any) {
-        return new Foobar((fulfill: any, reject: any) => {
+        return new MyPromise((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
                 0,
@@ -58,7 +58,7 @@ class Foobar {
     }
 
     catch(onRejection: any) {
-        return new Foobar((fulfill: any, reject: any) => {
+        return new MyPromise((fulfill: any, reject: any) => {
             setTimeout(
                 this.#register,
                 0,
@@ -94,27 +94,22 @@ class Foobar {
         onFulfillment: any,
         onRejection: any,
     ): void => {
-        this.#resolvements.add(
-            new ResolvementCallbacks(
-                fulfill,
-                reject,
-                onFulfillment,
-                onRejection,
-            ),
+        this.#resolves.add(
+            new Resolve(fulfill, reject, onFulfillment, onRejection),
         );
         this.#trigger();
     };
 
     #trigger(): void {
         if (this.#isSettled) {
-            for (const listener of this.#resolvements) {
-                this.#processFulfillment(listener);
-                this.#resolvements.delete(listener);
+            for (const listener of this.#resolves) {
+                this.#processResolve(listener);
+                this.#resolves.delete(listener);
             }
         }
     }
 
-    #processFulfillment(listener: ResolvementCallbacks): void {
+    #processResolve(listener: Resolve): void {
         if (this.#isFulfilled) {
             try {
                 listener.fulfill(listener.onFulfillment(this.#data));
@@ -138,7 +133,7 @@ function createPromise<InType, OutType = unknown>(
         reject: (v?: unknown) => void,
     ) => void,
 ): TPromise<InType, OutType> {
-    return new Foobar(executor) as any;
+    return new MyPromise(executor) as any;
 }
 
 export { createPromise };
