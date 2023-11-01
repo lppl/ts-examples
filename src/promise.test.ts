@@ -57,7 +57,6 @@ describe.each`
             ${"a null"}       | ${null}
             ${"a NaN"}        | ${NaN}
             ${"an object"}    | ${{}}
-            ${"fn"}           | ${() => undefined}
         `(
             "executor throws TypeError when $title have been passed instead of resolver",
             ({ executor }) => {
