@@ -2,7 +2,10 @@ import { createPromise } from "./promise";
 
 jest.setTimeout(50);
 
-describe("Promise", () => {
+describe.each`
+    implementation
+    ${"a class"}
+`("$implementation implementation", () => {
     test("executor runs synchronously", () => {
         const fn = jest.fn();
 
@@ -11,14 +14,7 @@ describe("Promise", () => {
         expect(fn).toBeCalled();
     });
 
-    test(".then(onFulfillment) happy path", (cb) => {
-        createPromise((resolve) => resolve(42)).then((data) => {
-            expect(data).toBe(42);
-            cb();
-        });
-    });
-
-    test("executor can fulfill asynchronously", (done) => {
+    test("executor can resolve asynchronously", (done) => {
         const promise = createPromise((resolve) =>
             setTimeout(() => resolve(42)),
         );
@@ -26,6 +22,56 @@ describe("Promise", () => {
         promise.then((result) => {
             expect(result).toBe(42);
             done();
+        });
+    });
+
+    test.each`
+        title                  | fn
+        ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
+        ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
+    `("executor(resolve) flattens thenable result ($title)", ({ fn }, done) => {
+        const promise = createPromise((resolve) => {
+            resolve(fn(42));
+        });
+
+        promise.then((data) => {
+            expect(data).toBe(42);
+            done();
+        });
+    });
+
+    test.each`
+        title             | value              | error
+        ${"an undefined"} | ${undefined}
+        ${"a number"}     | ${1}
+        ${"a null"}       | ${null}
+        ${"a NaN"}        | ${NaN}
+        ${"an object"}    | ${{}}
+        ${"fn"}           | ${() => undefined}
+    `(
+        "executor throws TypeError when $title have been passed instead of resolver",
+        ({ resolver }) => {
+            expect(() => createPromise(resolver)).toThrowError();
+        },
+    );
+
+    test("executor can reject a promise", (done) => {
+        const rejectedPromise = createPromise((_, reject) => reject(21));
+
+        const fixedPromise = rejectedPromise.then(undefined, (reason) => {
+            return reason;
+        });
+
+        fixedPromise.then((correct) => {
+            expect(correct).toBe(21);
+            done();
+        });
+    });
+
+    test(".then(onFulfillment) happy path", (cb) => {
+        createPromise((resolve) => resolve(42)).then((data) => {
+            expect(data).toBe(42);
+            cb();
         });
     });
 
@@ -56,21 +102,6 @@ describe("Promise", () => {
         title                  | fn
         ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
         ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
-    `("executor(resolve) flattens thenable result ($title)", ({ fn }, done) => {
-        const promise = createPromise((resolve) => {
-            resolve(fn(42));
-        });
-
-        promise.then((data) => {
-            expect(data).toBe(42);
-            done();
-        });
-    });
-
-    test.each`
-        title                  | fn
-        ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
-        ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
     `(".then(onFulfill) flattens thenable result ($title)", ({ fn }, done) => {
         const promise = createPromise((resolve) => {
             resolve(undefined);
@@ -83,21 +114,6 @@ describe("Promise", () => {
             done();
         });
     });
-
-    test.each`
-        title             | value              | error
-        ${"an undefined"} | ${undefined}
-        ${"a number"}     | ${1}
-        ${"a null"}       | ${null}
-        ${"a NaN"}        | ${NaN}
-        ${"an object"}    | ${{}}
-        ${"fn"}           | ${() => undefined}
-    `(
-        "executor throws TypeError when $title have been passed instead of resolver",
-        ({ resolver }) => {
-            expect(() => createPromise(resolver)).toThrowError();
-        },
-    );
 
     test.each`
         title             | incorrectOnFulfillment
@@ -120,20 +136,36 @@ describe("Promise", () => {
         },
     );
 
-    test("executor can reject a promise", (done) => {
-        const rejectedPromise = createPromise((_, reject) => reject(21));
-
-        const fixedPromise = rejectedPromise.then(undefined, (reason) => {
-            return reason;
-        });
-
-        fixedPromise.then((correct) => {
-            expect(correct).toBe(21);
-            done();
-        });
+    test(".then(onFulfill) rejects when onFulfill throw an Error", (done) => {
+        createPromise((resolve) => resolve(21))
+            .then(() => {
+                throw Error("Promise resolver failed.");
+            })
+            .catch((reason) => {
+                expect(reason).toEqual(Error("Promise resolver failed."));
+                done();
+            });
     });
 
-    test(".catch(onReject) returns resolved promise", (done) => {
+    test(".then(_, onReject) rejects promise when onReject throws an errors ", async () => {
+        await (createPromise((_, reject) => reject(21))
+            .then(
+                () => undefined,
+                () => {
+                    throw Error("Promise reject failed.");
+                },
+            )
+            .then(
+                () => {
+                    throw Error("This should not run");
+                },
+                (error) => {
+                    expect(error).toEqual(Error("Promise reject failed."));
+                },
+            ) as any);
+    });
+
+    test(".catch(onReject) resolves promise", (done) => {
         createPromise((_, reject) => reject(21))
             .catch((reason) => {
                 expect(reason).toBe(21);
@@ -154,34 +186,5 @@ describe("Promise", () => {
         await (promise as any);
 
         expect(fn).toBeCalledTimes(1);
-    });
-
-    test(".then(onFulfill) return rejected promise when onFulfill throw an Error", (done) => {
-        createPromise((resolve) => resolve(21))
-            .then(() => {
-                throw Error("Promise resolver failed.");
-            })
-            .catch((reason) => {
-                expect(reason).toEqual(Error("Promise resolver failed."));
-                done();
-            });
-    });
-
-    test(".then(_, onReject) return rejected promise when onReject throws an errors ", async () => {
-        await (createPromise((_, reject) => reject(21))
-            .then(
-                () => undefined,
-                () => {
-                    throw Error("Promise reject failed.");
-                },
-            )
-            .then(
-                () => {
-                    throw Error("This should not run");
-                },
-                (error) => {
-                    expect(error).toEqual(Error("Promise reject failed."));
-                },
-            ) as any);
     });
 });
