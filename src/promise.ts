@@ -13,7 +13,7 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
 const noop = (): void => undefined;
 const ident = <T>(data: T): T => data;
 
-class Listener {
+class ResolvementCallbacks {
     constructor(
         readonly fulfill: any,
         readonly reject: any,
@@ -34,8 +34,11 @@ class Foobar {
 
     #isFulfilled: boolean = false;
     #isRejected: boolean = false;
+    get #isSettled(): boolean {
+        return this.#isFulfilled || this.#isRejected;
+    }
 
-    #listeners = new Set<Listener>();
+    #resolvements = new Set<ResolvementCallbacks>();
 
     constructor(callback: any) {
         callback(this.#resolve, this.#reject);
@@ -67,12 +70,8 @@ class Foobar {
         });
     }
 
-    get #isResolved(): boolean {
-        return this.#isFulfilled || this.#isRejected;
-    }
-
     #resolve = (data: unknown): void => {
-        if (this.#isResolved) {
+        if (this.#isSettled) {
             return;
         }
         this.#isFulfilled = true;
@@ -81,7 +80,7 @@ class Foobar {
     };
 
     #reject = (data: unknown): void => {
-        if (this.#isResolved) {
+        if (this.#isSettled) {
             return;
         }
         this.#isRejected = true;
@@ -95,22 +94,27 @@ class Foobar {
         onFulfillment: any,
         onRejection: any,
     ): void => {
-        this.#listeners.add(
-            new Listener(fulfill, reject, onFulfillment, onRejection),
+        this.#resolvements.add(
+            new ResolvementCallbacks(
+                fulfill,
+                reject,
+                onFulfillment,
+                onRejection,
+            ),
         );
         this.#trigger();
     };
 
     #trigger(): void {
-        if (this.#isResolved) {
-            for (const listener of this.#listeners) {
-                this.#processListener(listener);
-                this.#listeners.delete(listener);
+        if (this.#isSettled) {
+            for (const listener of this.#resolvements) {
+                this.#processFulfillment(listener);
+                this.#resolvements.delete(listener);
             }
         }
     }
 
-    #processListener(listener: Listener): void {
+    #processFulfillment(listener: ResolvementCallbacks): void {
         if (this.#isFulfilled) {
             try {
                 listener.fulfill(listener.onFulfillment(this.#data));
