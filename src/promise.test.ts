@@ -7,8 +7,12 @@ describe.each`
     ${"a class"} | ${createPromiseClassImpl}
 `(
     "$implementation implementation",
-    ({ createPromise: fff }: { name: string; createPromise: any }) => {
-        const createPromise = createPromiseClassImpl;
+    ({
+        createPromise,
+    }: {
+        name: string;
+        createPromise: typeof createPromiseClassImpl;
+    }) => {
         test("executor runs synchronously", () => {
             const fn = jest.fn();
 
