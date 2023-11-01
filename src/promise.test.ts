@@ -53,19 +53,33 @@ describe("Promise", () => {
         title                  | fn
         ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
         ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
-    `(
-        "constructor can be fulfilled with thenable data for $title",
-        ({ fn }, done) => {
-            const promise = createPromise((resolve) => {
-                resolve(fn(42));
-            });
+    `("constructor flattens thenable result ($title)", ({ fn }, done) => {
+        const promise = createPromise((resolve) => {
+            resolve(fn(42));
+        });
 
-            promise.then((data) => {
-                expect(data).toBe(42);
-                done();
-            });
-        },
-    );
+        promise.then((data) => {
+            expect(data).toBe(42);
+            done();
+        });
+    });
+
+    test.each`
+        title                  | fn
+        ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
+        ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
+    `(".then(onFulfill) flattens thenable result ($title)", ({ fn }, done) => {
+        const promise = createPromise((resolve) => {
+            resolve(undefined);
+        }).then(() => {
+            return fn(42);
+        });
+
+        promise.then((data) => {
+            expect(data).toBe(42);
+            done();
+        });
+    });
 
     test.each`
         title                 | fn
