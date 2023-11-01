@@ -13,13 +13,29 @@ function isPromiseLike<T>(data: unknown | TPromise<T>): data is TPromise<T> {
 const noop = (): void => undefined;
 const ident = <T>(data: T): T => data;
 
+class Listener {
+    constructor(
+        readonly fulfill: any,
+        readonly reject: any,
+        readonly onFulfillment: any,
+        readonly onReject: any,
+    ) {
+        this.onFulfillment = this.#fnOrIdent(onFulfillment);
+        this.onReject = this.#fnOrIdent(onReject);
+    }
+
+    #fnOrIdent(fn: unknown) {
+        return typeof fn === "function" ? fn : ident;
+    }
+}
+
 class Foobar {
     #data: unknown;
 
     #isFulfilled: boolean = false;
     #isRejected: boolean = false;
 
-    #listeners = new Set<[any, any, any, any]>();
+    #listeners = new Set<Listener>();
 
     constructor(callback: any) {
         callback(this.#resolve, this.#reject);
@@ -79,46 +95,34 @@ class Foobar {
         onFulfillment: any,
         onRejection: any,
     ): void => {
-        this.#listeners.add([
-            fulfill,
-            reject,
-            this.#fnOrIdent(onFulfillment),
-            this.#fnOrIdent(onRejection),
-        ]);
+        this.#listeners.add(
+            new Listener(fulfill, reject, onFulfillment, onRejection),
+        );
         this.#trigger();
     };
 
-    #fnOrIdent(fn: unknown) {
-        return typeof fn === "function" ? fn : ident;
-    }
-
-    #trigger() {
+    #trigger(): void {
         if (this.#isResolved) {
             for (const listener of this.#listeners) {
-                this.#processListener(...listener);
+                this.#processListener(listener);
                 this.#listeners.delete(listener);
             }
         }
     }
 
-    #processListener(
-        fulfill: any,
-        reject: any,
-        onFulfillment: any,
-        onReject: any,
-    ): void {
+    #processListener(listener: Listener): void {
         if (this.#isFulfilled) {
             try {
-                fulfill(onFulfillment(this.#data));
+                listener.fulfill(listener.onFulfillment(this.#data));
             } catch (error) {
-                reject(onReject(error));
+                listener.reject(listener.onReject(error));
             }
         }
         if (this.#isRejected) {
             try {
-                fulfill(onReject(this.#data));
+                listener.fulfill(listener.onReject(this.#data));
             } catch (error) {
-                reject(error);
+                listener.reject(error);
             }
         }
     }
