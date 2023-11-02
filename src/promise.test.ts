@@ -1,4 +1,4 @@
-import { createPromise } from "./promise";
+import { createPromise } from "./promise.bbom";
 
 test("Promise run its callback function synchronously", () => {
     const fn = jest.fn();
