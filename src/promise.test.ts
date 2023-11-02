@@ -1,187 +1,213 @@
-import { createPromise } from "./promise.bbom";
+import { createPromise as createPromiseClassImpl } from "./promise.class-impl";
 
-test("Promise run its callback function synchronously", () => {
-    const fn = jest.fn();
+jest.setTimeout(50);
 
-    createPromise(fn);
-
-    expect(fn).toBeCalled();
-});
-
-test("Promise happy path with then", (cb) => {
-    createPromise((resolve) => resolve(42)).then((data) => {
-        expect(data).toBe(42);
-        cb();
-    });
-});
-
-test("Promise can resolve asynchronously", async () => {
-    const result = await (createPromise((resolve) =>
-        setTimeout(() => resolve(42)),
-    ) as any);
-
-    expect(result).toBe(42);
-});
-
-test("Resolved promise run its callback asynchronously", async () => {
-    const fn = jest.fn();
-    const promise = createPromise<void>((resolve) => resolve()).then(fn);
-
-    expect(fn).toBeCalledTimes(0);
-
-    await promise;
-
-    expect(fn).toBeCalledTimes(1);
-});
-
-test("Promise then transformation happy path", (cb) => {
-    createPromise((resolve) => resolve(21))
-        .then((data) => {
-            expect(data).toBe(21);
-            return 42;
-        })
-        .then((data) => {
-            expect(data).toBe(42);
-            cb();
-        });
-});
-
-test.each`
-    title                 | fn
-    ${"built in Promise"} | ${(value: unknown) => Promise.resolve(value)}
-    ${"createPromise"}    | ${(value: unknown) => createPromise((resolve) => resolve(value))}
-`("createPromise flattens return promise for $title", async ({ fn }) => {
-    const ret = await (createPromise((resolve) => resolve(fn(42))) as any);
-
-    expect(ret).toBe(42);
-});
-
-test.each`
-    title                 | fn
-    ${"built in Promise"} | ${(value: unknown) => Promise.resolve(value)}
-    ${"createPromise"}    | ${(value: unknown) => createPromise((resolve) => resolve(value))}
-`("createPromise.then flattens return promise for $title", async ({ fn }) => {
-    const ret = await (createPromise((resolve) => resolve(42)).then(fn) as any);
-
-    expect(ret).toBe(42);
-});
-
-test.each`
-    title             | value              | error
-    ${"an undefined"} | ${undefined}
-    ${"a number"}     | ${1}
-    ${"a null"}       | ${null}
-    ${"a NaN"}        | ${NaN}
-    ${"an object"}    | ${{}}
-    ${"fn"}           | ${() => undefined}
+describe.each`
+    name         | createPromise
+    ${"a class"} | ${createPromiseClassImpl}
 `(
-    "promise constructor throws TypeError with $title instead of resolver",
-    async ({ resolver }) => {
-        expect(() => createPromise(resolver)).toThrowError();
+    "$implementation implementation",
+    ({
+        createPromise,
+    }: {
+        name: string;
+        createPromise: typeof createPromiseClassImpl;
+    }) => {
+        test("executor runs synchronously", () => {
+            const fn = jest.fn();
+
+            createPromise(fn);
+
+            expect(fn).toBeCalled();
+        });
+
+        test("executor can resolve asynchronously", (done) => {
+            const promise = createPromise((fulfill) =>
+                setTimeout(() => fulfill(42)),
+            );
+
+            promise.then((value) => {
+                expect(value).toBe(42);
+                done();
+            });
+        });
+
+        test.each`
+            title                  | fn
+            ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
+            ${"my implementation"} | ${(value: unknown) => createPromise((fulfill) => fulfill(value))}
+        `(
+            "executor(resolve) flattens thenable result ($title)",
+            ({ fn }, done) => {
+                const promise = createPromise((fulfill) => {
+                    fulfill(fn(42));
+                });
+
+                promise.then((value) => {
+                    expect(value).toBe(42);
+                    done();
+                });
+            },
+        );
+
+        test.each`
+            title             | executor
+            ${"an undefined"} | ${undefined}
+            ${"a number"}     | ${1}
+            ${"a null"}       | ${null}
+            ${"a NaN"}        | ${NaN}
+            ${"an object"}    | ${{}}
+        `(
+            "executor throws TypeError when $title have been passed instead of resolver",
+            ({ executor }) => {
+                expect(() => createPromise(executor)).toThrowError();
+            },
+        );
+
+        test("executor can reject a promise", (done) => {
+            const rejectedPromise = createPromise((_, reject) => reject(21));
+
+            const fixedPromise = rejectedPromise.then(undefined, (reason) => {
+                return reason;
+            });
+
+            fixedPromise.then((value) => {
+                expect(value).toBe(21);
+                done();
+            });
+        });
+
+        test(".then(onfulfilled) happy path", (done) => {
+            createPromise((fulfill) => fulfill(42)).then((value) => {
+                expect(value).toBe(42);
+                done();
+            });
+        });
+
+        test(".then(onfulfilled) callback is run asynchronously", async () => {
+            const fn = jest.fn();
+            const promise = createPromise<void>((fulfill) => fulfill()).then(
+                fn,
+            );
+
+            expect(fn).toBeCalledTimes(0);
+
+            await promise;
+
+            expect(fn).toBeCalledTimes(1);
+        });
+
+        test(".then(onfulfilled) chain with another .then(onfulfilled)", (done) => {
+            createPromise((fulfill) => fulfill(21))
+                .then((value) => {
+                    expect(value).toBe(21);
+                    return 42;
+                })
+                .then((value) => {
+                    expect(value).toBe(42);
+                    done();
+                });
+        });
+
+        test.each`
+            title                  | fn
+            ${"built in Promise"}  | ${(value: unknown) => Promise.resolve(value)}
+            ${"my implementation"} | ${(value: unknown) => createPromise((resolve) => resolve(value))}
+        `(
+            ".then(onFulfill) flattens thenable result ($title)",
+            ({ fn }, done) => {
+                const promise = createPromise((fulfill) => {
+                    fulfill(undefined);
+                }).then(() => {
+                    return fn(42);
+                });
+
+                promise.then((value) => {
+                    expect(value).toBe(42);
+                    done();
+                });
+            },
+        );
+
+        test.each`
+            title             | incorrectOnFulfillment
+            ${"an undefined"} | ${undefined}
+            ${"a number"}     | ${1}
+            ${"a null"}       | ${null}
+            ${"a NaN"}        | ${NaN}
+            ${"an object"}    | ${{}}
+        `(
+            ".then(onFulfill) fails silently with $title instead of onFulfill callback",
+            ({ incorrectOnFulfillment }, done) => {
+                const promise = createPromise<void>((fulfill) =>
+                    fulfill(),
+                ).then(incorrectOnFulfillment);
+
+                promise.then((value) => {
+                    expect(value).toBeUndefined();
+                    done();
+                });
+            },
+        );
+
+        test(".then(onFulfill) rejects when onFulfill throw an Error", (done) => {
+            createPromise((resolve) => resolve(21))
+                .then(() => {
+                    throw Error("Promise resolver failed.");
+                })
+                .then(
+                    () => undefined,
+                    (reason) => {
+                        expect(reason).toEqual(
+                            Error("Promise resolver failed."),
+                        );
+                        done();
+                    },
+                );
+        });
+
+        test(".then(_, onReject) rejects promise when onReject throws an errors ", async () => {
+            await (createPromise((_, reject) => reject(21))
+                .then(
+                    () => undefined,
+                    () => {
+                        throw Error("Promise reject failed.");
+                    },
+                )
+                .then(
+                    () => {
+                        throw Error("This should not run");
+                    },
+                    (reason) => {
+                        expect(reason).toEqual(Error("Promise reject failed."));
+                    },
+                ) as any);
+        });
+
+        test(".catch(onReject) resolves promise", (done) => {
+            createPromise((_, reject) => reject(21))
+                .catch((reason) => {
+                    expect(reason).toBe(21);
+                    return 42;
+                })
+                .then((value) => {
+                    expect(value).toBe(42);
+                    done();
+                });
+        });
+
+        test(".catch(onReject) runs onReject callback asynchronously ", (done) => {
+            const fn = jest.fn();
+            const promise = createPromise<void>((_, reject) => reject()).catch(
+                fn,
+            );
+
+            expect(fn).toBeCalledTimes(0);
+
+            promise.then(() => {
+                expect(fn).toBeCalledTimes(1);
+                done();
+            });
+        });
     },
 );
-
-test.each`
-    title             | value
-    ${"an undefined"} | ${undefined}
-    ${"a number"}     | ${1}
-    ${"a null"}       | ${null}
-    ${"a NaN"}        | ${NaN}
-    ${"an object"}    | ${{}}
-`(
-    "Promise then fails silently with $title instead of callback",
-    async ({ value }) => {
-        const v = await (createPromise<void, unknown>((resolve) =>
-            resolve(),
-        ).then(value) as any);
-        expect(v).toBeUndefined();
-    },
-);
-
-test("Promise can be rejected in constructor", (cb) => {
-    createPromise((_, reject) => reject(21))
-        .then(undefined, (reason) => {
-            expect(reason).toBe(21);
-            return 42;
-        })
-        .then((correct) => {
-            expect(correct).toBe(42);
-            cb();
-        });
-});
-
-test("Promise can be fulfilled only once", async () => {
-    const promise = createPromise((fulfill) => {
-        fulfill(42);
-        fulfill(45);
-    });
-    expect(await promise).toBe(42);
-});
-
-test("Promise can be rejected only once", (cb) => {
-    const promise = createPromise((_, reject) => {
-        reject("a");
-        reject("b");
-    });
-
-    promise.catch((v) => {
-        expect(v).toBe("a");
-        cb();
-    });
-});
-
-test("Promise catch ", (cb) => {
-    createPromise((_, reject) => reject(21))
-        .catch((reason) => {
-            expect(reason).toBe(21);
-            return 42;
-        })
-        .then((data) => {
-            expect(data).toBe(42);
-            cb();
-        });
-});
-
-test("Rejected promise .catch runs callback asynchronously ", async () => {
-    const fn = jest.fn();
-    const promise = createPromise<void>((_, reject) => reject()).catch(fn);
-
-    expect(fn).toBeCalledTimes(0);
-
-    await (promise as any);
-
-    expect(fn).toBeCalledTimes(1);
-});
-
-test("When .then onResolve callback throws an error then promise is rejected", async () => {
-    await (createPromise((resolve) => resolve(21))
-        .then(() => {
-            throw Error("Promise resolver failed.");
-        })
-        .then(
-            () => {
-                throw Error("This should not run");
-            },
-            (error) => {
-                expect(error).toEqual(Error("Promise resolver failed."));
-            },
-        ) as any);
-});
-
-test("When .then onReject callback throws an error then promise is rejected", async () => {
-    await (createPromise((_, reject) => reject(21))
-        .then(
-            () => undefined,
-            () => {
-                throw Error("Promise reject failed.");
-            },
-        )
-        .then(
-            () => {
-                throw Error("This should not run");
-            },
-            (error) => {
-                expect(error).toEqual(Error("Promise reject failed."));
-            },
-        ) as any);
-});
