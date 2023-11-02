@@ -1,4 +1,4 @@
-import { Result, Ok, Err } from "./result";
+import { TResult, Ok, Err } from "./result";
 
 type InnerOption<TValue> = Readonly<{
     and<TTarget>(fn: (v: TValue) => TTarget): TOption<TTarget>;
@@ -8,7 +8,7 @@ type InnerOption<TValue> = Readonly<{
         noneFn: () => TExpected,
     ): TExpected;
     value(_default: TValue): TValue;
-    result(error: Error): Result<TValue>;
+    result(error: Error): TResult<TValue>;
     unwrap(): TValue;
 }>;
 
@@ -46,7 +46,7 @@ class OptionSome<TValue> implements InnerOption<TValue> {
         return this.#value;
     }
 
-    result(): Result<TValue> {
+    result(): TResult<TValue> {
         return Ok(this.#value);
     }
 
@@ -75,7 +75,7 @@ class OptionNone<TValue> implements InnerOption<TValue> {
         return _default;
     }
 
-    result(error: Error): Result<TValue> {
+    result(error: Error): TResult<TValue> {
         return Err(error);
     }
 
@@ -101,7 +101,7 @@ function Some<TValue extends unknown>(value: TValue): TOption<TValue> {
 const none = Object.freeze(new OptionNone<unknown>());
 
 function None<T>(): TOption<T> {
-    return none as TOption<T>;
+    return none as unknown as TOption<T>;
 }
 
 function Option<TValue>(value: TValue | undefined): TOption<TValue> {
