@@ -1,5 +1,3 @@
-import { TResult } from "./result";
-
 function isThenable<T>(
     value: unknown | PromiseLike<T>,
 ): value is PromiseLike<T> {
@@ -148,7 +146,7 @@ class MyPromise<T> {
 
 function createPromise<T>(
     executor: (
-        resolve: (value: T | PromiseLike<T>) => void,
+        fulfill: (value: T | PromiseLike<T>) => void,
         reject: (reason?: any) => void,
     ) => void,
 ): MyPromise<T> {

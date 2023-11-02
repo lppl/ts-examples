@@ -1,12 +1,14 @@
 import { createPromise as createPromiseClassImpl } from "./promise.class-impl";
+import { createPromise as createPromiseBBOMImpl } from "./promise.bbom-impl";
 
 jest.setTimeout(50);
 
 describe.each`
-    name         | createPromise
-    ${"a class"} | ${createPromiseClassImpl}
+    name                   | createPromise
+    ${"a class"}           | ${createPromiseClassImpl}
+    ${"a Big Bowl of Mud"} | ${createPromiseBBOMImpl}
 `(
-    "$implementation implementation",
+    "Tests for $name implementation",
     ({
         createPromise,
     }: {
