@@ -4,7 +4,7 @@ export function explainError(
     maxDepth = 10,
 ): string {
     const msg: string[] = [];
-    msg.push(`\n🔥🔥🔥🔥 ${header} 🔥🔥🔥🔥`);
+    msg.push(`👇👇👇👇👇 BEGIN :: ${header} 👇👇👇👇👇`);
     const errors: Error[] = [];
     let current = error;
     let i = maxDepth;
@@ -18,13 +18,21 @@ export function explainError(
         msg.push(`  - 🧨 ${error}`);
     }
 
-    msg.push("\n\nStacks\n");
+    msg.push("\n\nStacks");
     for (let error of errors) {
-        msg.push(`  - ${error.stack}`);
+        msg.push(`\n  - ${error.stack}`);
     }
 
-    msg.push(`\n🔥🔥🔥🔥 ${header} 🔥🔥🔥🔥\n`);
-    return msg.join("\n");
+    msg.push(`\n👆👆👆👆👆 END :: ${header} 👆👆👆👆👆`);
+    return (
+        "\n" +
+        msg
+            .join("\n")
+            .split("\n")
+            .map((line) => `>> ${line}`)
+            .join("\n") +
+        "\n"
+    );
 }
 
 export function logErrorDetails(
