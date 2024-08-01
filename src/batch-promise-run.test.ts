@@ -11,7 +11,17 @@ describe("batchPromiseRun", () => {
         expect((result[1] as any).data).toBe("BazBar");
     });
 
-    it("Collects job failures", async () => {
+    it("Collects job failures as error", async () => {
+        const result = await batchPromiseRun([
+            () => Promise.reject(Error("Foobar")),
+            () => Promise.reject(Error("BazBar")),
+        ]);
+        expect(result.length).toBe(2);
+        expect((result[0] as any).error).toEqual(Error("Foobar"));
+        expect((result[1] as any).error).toEqual(Error("BazBar"));
+    });
+
+    it("Indicates result status with isResolved/isRejected bool`s", async () => {
         const result = await batchPromiseRun([
             () => Promise.reject(Error("Job failed")),
             () => Promise.resolve("Ok"),
