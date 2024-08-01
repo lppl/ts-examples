@@ -7,8 +7,8 @@ describe("batchPromiseRun", () => {
             () => Promise.resolve("BazBar"),
         ]);
         expect(result.length).toBe(2);
-        expect((result[0] as any).data).toBe("Foobar");
-        expect((result[1] as any).data).toBe("BazBar");
+        expect(result[0]).toHaveProperty("data", "Foobar");
+        expect(result[1]).toHaveProperty("data", "BazBar");
     });
 
     it("Collects job failures as error", async () => {
@@ -17,27 +17,20 @@ describe("batchPromiseRun", () => {
             () => Promise.reject(Error("BazBar")),
         ]);
         expect(result.length).toBe(2);
-        expect((result[0] as any).error).toEqual(Error("Foobar"));
-        expect((result[1] as any).error).toEqual(Error("BazBar"));
+        expect(result[0]).toHaveProperty("error", Error("Foobar"));
+        expect(result[1]).toHaveProperty("error", Error("BazBar"));
     });
 
-    it("Indicates result status with isResolved/isRejected bool`s", async () => {
+    it("Indicates result status with flags isResolved/isRejected", async () => {
         const result = await batchPromiseRun([
             () => Promise.reject(Error("Job failed")),
             () => Promise.resolve("Ok"),
         ]);
 
         expect(result.length).toBe(2);
-        expect(result[0]).toEqual({
-            isResolved: false,
-            isRejected: true,
-            error: Error("Job failed"),
-        });
-
-        expect(result[1]).toEqual({
-            isResolved: true,
-            isRejected: false,
-            data: "Ok",
-        });
+        expect(result[0]).toHaveProperty("isResolved", false);
+        expect(result[0]).toHaveProperty("isRejected", true);
+        expect(result[1]).toHaveProperty("isResolved", true);
+        expect(result[1]).toHaveProperty("isRejected", false);
     });
 });
