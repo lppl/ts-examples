@@ -44,3 +44,9 @@ export function waitFor(fn: () => void, timeoutMs = 10, intervalMs = 2) {
         run();
     });
 }
+
+export function waitForMs(ms = 1) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}

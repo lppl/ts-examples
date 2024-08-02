@@ -1,10 +1,12 @@
 type TData<T> = {
     data: T;
+    durationMs: number;
     isResolved: true;
     isRejected: false;
 };
 type TError = {
     error: Error;
+    durationMs: number;
     isResolved: false;
     isRejected: true;
 };
@@ -16,13 +18,14 @@ type JobResults<T, E> = Promise<Array<TResult<T>>>;
 type Foobar<T> = {
     job: JobInitiator<T>;
     i: number;
+    startMs: number;
 };
 export async function batchPromiseRun<T, E>(
     jobs: JobInitiatorList<T>,
     count = 10,
 ): JobResults<T, E> {
-    let resolve;
-    const todo = jobs.map((job, i) => ({ job, i })).reverse();
+    let resolve = (_: Array<TResult<T>>) => {};
+    const todo = jobs.map((job, i) => ({ job, i, startMs: -1 })).reverse();
     const current = new Set();
     const result: Array<TResult<T>> = new Array(jobs.length);
     let isSuccess = true;
@@ -37,6 +40,7 @@ export async function batchPromiseRun<T, E>(
 
     function add(job: Foobar<T>) {
         const initiated = job.job();
+        job.startMs = Date.now();
         current.add(job);
         initiated
             .then(
@@ -45,13 +49,14 @@ export async function batchPromiseRun<T, E>(
             )
             .then(() => {
                 current.delete(job);
-                check(job);
+                check();
             });
     }
     function resolveJob(job: Foobar<T>, data: T) {
         result[job.i] = {
             isResolved: true,
             isRejected: false,
+            durationMs: Date.now() - job.startMs,
             data,
         };
     }
@@ -60,6 +65,7 @@ export async function batchPromiseRun<T, E>(
         result[job.i] = {
             isResolved: false,
             isRejected: true,
+            durationMs: Date.now() - job.startMs,
             error,
         };
     }
