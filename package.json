@@ -18,6 +18,7 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "@types/bun": "1.1.6",
     "@types/node": "20.2.5"
   }
 }
