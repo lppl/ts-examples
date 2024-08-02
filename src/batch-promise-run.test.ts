@@ -1,4 +1,5 @@
 import { batchPromiseRun } from "./batch-promise-run";
+import { createPromiseSpy, waitFor } from "./test-utils";
 
 describe("batchPromiseRun", () => {
     it("Collects job results as data", async () => {
@@ -32,5 +33,29 @@ describe("batchPromiseRun", () => {
         expect(result[0]).toHaveProperty("isRejected", true);
         expect(result[1]).toHaveProperty("isResolved", true);
         expect(result[1]).toHaveProperty("isRejected", false);
+    });
+
+    it("It takes number of jobs for one batch", async () => {
+        const first = createPromiseSpy();
+        const second = createPromiseSpy();
+        const third = createPromiseSpy();
+
+        const promiseRun = batchPromiseRun([first.fn, second.fn, third.fn], 1);
+
+        expect(first.fn).toHaveBeenCalled();
+        expect(second.fn).not.toHaveBeenCalled();
+
+        first.resolve("First");
+        await waitFor(() => expect(second.fn).toHaveBeenCalled());
+        expect(third.fn).not.toHaveBeenCalled();
+
+        second.resolve("Second");
+        third.resolve("Third");
+
+        const result = await promiseRun;
+
+        expect(result[0]).toHaveProperty("data", "First");
+        expect(result[1]).toHaveProperty("data", "Second");
+        expect(result[2]).toHaveProperty("data", "Third");
     });
 });
