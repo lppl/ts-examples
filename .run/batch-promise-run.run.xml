@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="batch-promise-run" type="NodeJSConfigurationType" node-parameters="test --timeout 50" path-to-js-file="batch-promise-run.test.ts" working-dir="$PROJECT_DIR$/src">
+    <method v="2" />
+  </configuration>
+</component>
