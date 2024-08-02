@@ -13,22 +13,21 @@ type TError = {
 type TResult<T> = TData<T> | TError;
 type JobInitiator<T> = () => Promise<T>;
 type JobInitiatorList<T> = Array<JobInitiator<T>>;
-type JobResults<T, E> = Promise<Array<TResult<T>>>;
+type JobResults<T> = Promise<Array<TResult<T>>>;
 
 type Foobar<T> = {
     job: JobInitiator<T>;
     i: number;
     startMs: number;
 };
-export async function batchPromiseRun<T, E>(
+export async function batchPromiseRun<T>(
     jobs: JobInitiatorList<T>,
     count = 10,
-): JobResults<T, E> {
+): JobResults<T> {
     let resolve = (_: Array<TResult<T>>) => {};
     const todo = jobs.map((job, i) => ({ job, i, startMs: -1 })).reverse();
     const current = new Set();
     const result: Array<TResult<T>> = new Array(jobs.length);
-    let isSuccess = true;
 
     function check() {
         if (todo.length === 0 && current.size === 0) {

@@ -94,7 +94,6 @@ describe("batchPromiseRun", () => {
 
         const result = await promiseRun;
 
-        console.log(result);
         expect(result[0]).toHaveProperty("durationMs", 2000);
         expect(result[1]).toHaveProperty("durationMs", 3000);
     });
