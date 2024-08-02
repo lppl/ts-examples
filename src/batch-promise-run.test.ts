@@ -3,7 +3,7 @@ import { createPromiseSpy, waitFor, waitForMs } from "./test-utils";
 import { describe, it, afterEach, expect, setSystemTime } from "bun:test";
 
 describe("batchPromiseRun", () => {
-    it("Collects job results as data", async () => {
+    it("have data field when job resolves", async () => {
         const result = await batchPromiseRun([
             () => Promise.resolve("Foobar"),
             () => Promise.resolve("BazBar"),
@@ -13,7 +13,7 @@ describe("batchPromiseRun", () => {
         expect(result[1]).toHaveProperty("data", "BazBar");
     });
 
-    it("Collects job failures as error", async () => {
+    it("have error field when job rejects", async () => {
         const result = await batchPromiseRun([
             () => Promise.reject(Error("Foobar")),
             () => Promise.reject(Error("BazBar")),
@@ -23,7 +23,7 @@ describe("batchPromiseRun", () => {
         expect(result[1]).toHaveProperty("error", Error("BazBar"));
     });
 
-    it("Indicates result status with flags isResolved/isRejected", async () => {
+    it("have isRejected/isResolved flags in each result", async () => {
         const result = await batchPromiseRun([
             () => Promise.reject(Error("Job failed")),
             () => Promise.resolve("Ok"),
@@ -36,7 +36,7 @@ describe("batchPromiseRun", () => {
         expect(result[1]).toHaveProperty("isRejected", false);
     });
 
-    it("It takes number of jobs for one batch", async () => {
+    it("have configurable batch size", async () => {
         const first = createPromiseSpy();
         const second = createPromiseSpy();
         const third = createPromiseSpy();
@@ -60,7 +60,7 @@ describe("batchPromiseRun", () => {
         expect(result[2]).toHaveProperty("data", "Third");
     });
 
-    it("Results of promise keep the order of job initiators", async () => {
+    it("keep order of job in the result", async () => {
         const first = createPromiseSpy();
         const second = createPromiseSpy();
         const third = createPromiseSpy();
@@ -78,7 +78,7 @@ describe("batchPromiseRun", () => {
         expect(result[2]).toHaveProperty("data", "Third");
     });
 
-    it("Results keep track of duration of the call", async () => {
+    it("keep track of job duration", async () => {
         const first = createPromiseSpy();
         const second = createPromiseSpy();
 
