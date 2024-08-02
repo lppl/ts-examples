@@ -58,4 +58,22 @@ describe("batchPromiseRun", () => {
         expect(result[1]).toHaveProperty("data", "Second");
         expect(result[2]).toHaveProperty("data", "Third");
     });
+
+    it("Results of promise keep the order of job initiators", async () => {
+        const first = createPromiseSpy();
+        const second = createPromiseSpy();
+        const third = createPromiseSpy();
+
+        const promiseRun = batchPromiseRun([first.fn, second.fn, third.fn], 3);
+
+        setTimeout(() => first.resolve("First"), 2);
+        setTimeout(() => second.resolve("Second"), 3);
+        setTimeout(() => third.resolve("Third"), 1);
+
+        const result = await promiseRun;
+
+        expect(result[0]).toHaveProperty("data", "First");
+        expect(result[1]).toHaveProperty("data", "Second");
+        expect(result[2]).toHaveProperty("data", "Third");
+    });
 });

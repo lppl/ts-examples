@@ -30,7 +30,6 @@ export function waitFor(fn: () => void, timeoutMs = 10, intervalMs = 2) {
 
         function run() {
             try {
-                console.log("Run no.", ++no);
                 fn();
                 resolve();
             } catch (cause) {
